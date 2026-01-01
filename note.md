@@ -1,5 +1,692 @@
 # Design Patterns
 
+## Core Design Principles (Head First Design Patterns)
+
+Trước khi học patterns, cần hiểu các nguyên lý thiết kế cơ bản:
+
+### 1. **Encapsulate what varies**
+**"Identify the aspects of your application that vary and separate them from what stays the same"**
+
+**Giải thích**: Tách phần code hay thay đổi ra khỏi phần code ổn định.
+
+**Ví dụ**:
+```typescript
+// ❌ BAD: Logic hay đổi nằm lẫn với code ổn định
+class Duck {
+  quack() {
+    if (this.type === 'rubber') {
+      console.log('Squeak')
+    } else if (this.type === 'wooden') {
+      console.log('...')
+    } else {
+      console.log('Quack')
+    }
+  }
+}
+
+// ✅ GOOD: Encapsulate varying behavior
+interface QuackBehavior {
+  quack(): void
+}
+
+class Quack implements QuackBehavior {
+  quack() { console.log('Quack') }
+}
+
+class Squeak implements QuackBehavior {
+  quack() { console.log('Squeak') }
+}
+
+class Duck {
+  constructor(private quackBehavior: QuackBehavior) {}
+  
+  performQuack() {
+    this.quackBehavior.quack() // Delegate to behavior object
+  }
+}
+```
+
+**Patterns áp dụng**: Strategy, State, Template Method, Factory Method
+
+---
+
+### 2. **Program to an interface, not an implementation**
+**"Program to a supertype/interface, not to a concrete implementation"**
+
+**Giải thích**: Depend vào abstraction (interface/abstract class), không depend vào concrete class.
+
+**Ví dụ**:
+```typescript
+// ❌ BAD: Programming to implementation
+class Dog {
+  bark() { console.log('Woof') }
+}
+
+function makeSound() {
+  const dog = new Dog() // Depend on concrete class!
+  dog.bark()
+}
+
+// ✅ GOOD: Programming to interface
+interface Animal {
+  makeSound(): void
+}
+
+class Dog implements Animal {
+  makeSound() { console.log('Woof') }
+}
+
+class Cat implements Animal {
+  makeSound() { console.log('Meow') }
+}
+
+function makeSound(animal: Animal) { // Depend on interface!
+  animal.makeSound()
+}
+
+// Usage: flexible!
+makeSound(new Dog())
+makeSound(new Cat())
+```
+
+**Patterns áp dụng**: Factory Method, Abstract Factory, Strategy, Observer, Command
+
+---
+
+### 3. **Favor composition over inheritance**
+**"HAS-A can be better than IS-A"**
+
+**Giải thích**: Dùng composition (object chứa object) thay vì inheritance (kế thừa) để linh hoạt hơn.
+
+**Ví dụ**:
+```typescript
+// ❌ BAD: Inheritance - rigid hierarchy
+class Bird {
+  fly() { console.log('Flying') }
+}
+
+class Penguin extends Bird {
+  // Penguin can't fly but inherits fly()! 
+  fly() { throw new Error("Can't fly") } // LSP violation
+}
+
+// ✅ GOOD: Composition - flexible
+interface FlyBehavior {
+  fly(): void
+}
+
+class FlyWithWings implements FlyBehavior {
+  fly() { console.log('Flying with wings') }
+}
+
+class FlyNoWay implements FlyBehavior {
+  fly() { console.log("Can't fly") }
+}
+
+class Bird {
+  constructor(private flyBehavior: FlyBehavior) {}
+  
+  performFly() {
+    this.flyBehavior.fly()
+  }
+  
+  // Can change behavior at runtime!
+  setFlyBehavior(fb: FlyBehavior) {
+    this.flyBehavior = fb
+  }
+}
+
+const eagle = new Bird(new FlyWithWings())
+const penguin = new Bird(new FlyNoWay())
+```
+
+**Lợi ích**:
+- ✅ Thay đổi behavior runtime
+- ✅ Tránh rigid class hierarchy
+- ✅ Tái sử dụng behaviors
+- ✅ Dễ test và maintain
+
+**Patterns áp dụng**: Strategy, Decorator, Composite, Bridge
+
+---
+
+### 4. **Strive for loosely coupled designs between objects that interact**
+**"Minimize dependencies between interacting objects"**
+
+**Giải thích**: Giảm sự phụ thuộc giữa các objects, chúng biết ít về nhau nhất có thể.
+
+**Ví dụ**:
+```typescript
+// ❌ BAD: Tightly coupled
+class WeatherStation {
+  private temperature: number
+  
+  // Directly depends on concrete displays
+  private currentDisplay: CurrentConditionsDisplay
+  private statsDisplay: StatisticsDisplay
+  
+  measurementsChanged() {
+    // Must know about all displays and their methods
+    this.currentDisplay.update(this.temperature)
+    this.statsDisplay.update(this.temperature)
+    // Hard to add new displays!
+  }
+}
+
+// ✅ GOOD: Loosely coupled with Observer pattern
+interface Observer {
+  update(data: any): void
+}
+
+class WeatherStation {
+  private observers: Observer[] = []
+  private temperature: number
+  
+  registerObserver(o: Observer) {
+    this.observers.push(o)
+  }
+  
+  notifyObservers() {
+    // Doesn't know about concrete observers!
+    this.observers.forEach(o => o.update(this.temperature))
+  }
+  
+  measurementsChanged() {
+    this.notifyObservers()
+  }
+}
+
+// Easy to add new observers!
+class CurrentConditionsDisplay implements Observer {
+  update(temp: number) { console.log('Current:', temp) }
+}
+
+class StatisticsDisplay implements Observer {
+  update(temp: number) { /* calculate stats */ }
+}
+```
+
+**Lợi ích loose coupling**:
+- ✅ Thay đổi một object không ảnh hưởng others
+- ✅ Dễ reuse objects
+- ✅ Dễ test (mock dependencies)
+- ✅ Flexible, maintainable
+
+**Patterns áp dụng**: Observer, Mediator, Command, Chain of Responsibility
+
+---
+
+### 5. **Open-Closed Principle (OCP)**
+**"Classes should be open for extension, but closed for modification"**
+
+**Giải thích**: Có thể extend behavior mà không cần modify code hiện tại.
+
+**Ví dụ**:
+```typescript
+// ❌ BAD: Phải modify để extend
+class ShapeDrawer {
+  draw(shape: any) {
+    if (shape.type === 'circle') {
+      // draw circle
+    } else if (shape.type === 'rectangle') {
+      // draw rectangle
+    }
+    // Thêm shape mới phải modify if/else này!
+  }
+}
+
+// ✅ GOOD: Open for extension, closed for modification
+interface Shape {
+  draw(): void
+}
+
+class Circle implements Shape {
+  draw() { console.log('Drawing circle') }
+}
+
+class Rectangle implements Shape {
+  draw() { console.log('Drawing rectangle') }
+}
+
+class ShapeDrawer {
+  draw(shape: Shape) {
+    shape.draw() // Không cần modify khi thêm shape mới!
+  }
+}
+
+// Add new shape: just create new class
+class Triangle implements Shape {
+  draw() { console.log('Drawing triangle') }
+}
+```
+
+**Patterns áp dụng**: Decorator, Strategy, Template Method, Factory Method
+
+---
+
+### 6. **Dependency Inversion Principle (DIP)**
+**"Depend upon abstractions. Do not depend upon concrete classes"**
+
+**Giải thích**: High-level modules không nên depend vào low-level modules. Cả hai nên depend vào abstraction.
+
+**Ví dụ**:
+```typescript
+// ❌ BAD: High-level depends on low-level
+class MySQLDatabase {
+  save(data: any) { /* MySQL specific */ }
+}
+
+class UserService {
+  private db = new MySQLDatabase() // Depend on concrete!
+  
+  saveUser(user: User) {
+    this.db.save(user)
+  }
+}
+
+// ✅ GOOD: Both depend on abstraction
+interface Database {
+  save(data: any): void
+}
+
+class MySQLDatabase implements Database {
+  save(data: any) { /* MySQL specific */ }
+}
+
+class MongoDatabase implements Database {
+  save(data: any) { /* Mongo specific */ }
+}
+
+class UserService {
+  constructor(private db: Database) {} // Depend on abstraction!
+  
+  saveUser(user: User) {
+    this.db.save(user)
+  }
+}
+
+// Usage: inject dependency
+const service1 = new UserService(new MySQLDatabase())
+const service2 = new UserService(new MongoDatabase())
+```
+
+**Guidelines**:
+- ✅ No variable should hold reference to concrete class (use factory!)
+- ✅ No class should derive from concrete class
+- ✅ No method should override implemented method of base class
+
+**Patterns áp dụng**: Factory Method, Abstract Factory, Strategy, Observer, Command
+
+---
+
+### 7. **Principle of Least Knowledge (Law of Demeter)**
+**"Talk only to your immediate friends"**
+
+**Giải thích**: Object chỉ nên gọi methods của:
+- Chính nó
+- Objects được truyền vào method
+- Objects nó tạo ra
+- Component objects của nó
+
+**Ví dụ**:
+```typescript
+// ❌ BAD: Too many friends (tight coupling)
+class Customer {
+  getWallet(): Wallet {
+    return this.wallet
+  }
+}
+
+class Wallet {
+  getMoney(): number {
+    return this.money
+  }
+}
+
+// Payment method knows too much!
+function makePayment(customer: Customer, amount: number) {
+  const wallet = customer.getWallet() // Friend of friend
+  const money = wallet.getMoney()     // Friend of friend of friend
+  if (money >= amount) {
+    wallet.setMoney(money - amount)
+  }
+}
+
+// ✅ GOOD: Talk to immediate friends only
+class Customer {
+  private wallet: Wallet
+  
+  // Customer handles its own wallet
+  makePayment(amount: number): boolean {
+    return this.wallet.deduct(amount)
+  }
+}
+
+class Wallet {
+  private money: number
+  
+  deduct(amount: number): boolean {
+    if (this.money >= amount) {
+      this.money -= amount
+      return true
+    }
+    return false
+  }
+}
+
+// Simple, doesn't know about Wallet
+function makePayment(customer: Customer, amount: number) {
+  return customer.makePayment(amount)
+}
+```
+
+**Patterns áp dụng**: Facade, Mediator
+
+---
+
+### 8. **Single Responsibility Principle (SRP)**
+**"A class should have only one reason to change"**
+
+**Giải thích**: Mỗi class chỉ chịu trách nhiệm về 1 việc duy nhất.
+
+**Ví dụ**:
+```typescript
+// ❌ BAD: Multiple responsibilities
+class User {
+  name: string
+  email: string
+  
+  // Responsibility 1: User data
+  updateProfile(name: string) {
+    this.name = name
+  }
+  
+  // Responsibility 2: Validation
+  validateEmail(): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)
+  }
+  
+  // Responsibility 3: Database
+  save() {
+    // Save to database
+  }
+  
+  // Responsibility 4: Notification
+  sendWelcomeEmail() {
+    // Send email
+  }
+}
+// 4 reasons to change this class!
+
+// ✅ GOOD: Single responsibility each
+class User {
+  constructor(
+    public name: string,
+    public email: string
+  ) {}
+}
+
+class UserValidator {
+  validateEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  }
+}
+
+class UserRepository {
+  save(user: User): void {
+    // Save to database
+  }
+}
+
+class EmailService {
+  sendWelcomeEmail(user: User): void {
+    // Send email
+  }
+}
+```
+
+**Patterns áp dụng**: Strategy, Command, Iterator, Visitor
+
+---
+
+## Tổ chức Design Patterns (Head First approach)
+
+### **Learning Path: Foundation → Intermediate → Advanced**
+
+#### **Phase 1: Foundation Patterns** ⭐ (Học đầu tiên)
+Patterns cơ bản, dùng nhiều nhất, nắm principles quan trọng:
+
+**1. Strategy Pattern** - Chapter 1
+- **Principle**: Encapsulate what varies + Composition over Inheritance
+- **Problem**: Duck simulator với nhiều loại duck khác nhau
+- **Use case**: Payment methods, sorting algorithms, notification channels
+```typescript
+class Context {
+  constructor(private strategy: Strategy) {}
+  executeStrategy() { this.strategy.execute() }
+}
+```
+
+**2. Observer Pattern** - Chapter 2  
+- **Principle**: Loose coupling between Subject and Observers
+- **Problem**: Weather station cần notify nhiều displays
+- **Use case**: Event systems, MVC, real-time updates
+```typescript
+class Subject {
+  private observers: Observer[] = []
+  notifyObservers() { observers.forEach(o => o.update()) }
+}
+```
+
+**3. Decorator Pattern** - Chapter 3
+- **Principle**: Open/Closed, Composition over Inheritance
+- **Problem**: Starbucks coffee với nhiều add-ons
+- **Use case**: Java I/O streams, UI components, middleware
+```typescript
+class Decorator extends Component {
+  constructor(private component: Component) {}
+  operation() { 
+    this.component.operation()
+    this.addedBehavior()
+  }
+}
+```
+
+**4. Factory Method & Abstract Factory** - Chapter 4
+- **Principle**: Dependency Inversion, Program to interface
+- **Problem**: Pizza stores ở nhiều regions khác nhau
+- **Use case**: Cross-platform apps, database adapters
+```typescript
+abstract class Creator {
+  abstract createProduct(): Product
+}
+```
+
+**5. Singleton Pattern** - Chapter 5
+- **Principle**: Controlled access to single instance
+- **Problem**: Chocolate boiler (multi-threading)
+- **Use case**: Database connection, logger, config
+```typescript
+class Singleton {
+  private static instance: Singleton
+  static getInstance() { /* return single instance */ }
+}
+```
+
+---
+
+#### **Phase 2: Intermediate Patterns** 🔥
+
+**6. Command Pattern** - Chapter 6
+- **Principle**: Encapsulate request as object, loose coupling
+- **Problem**: Universal remote control với undo
+- **Use case**: Undo/redo, macro commands, job queues
+```typescript
+interface Command {
+  execute(): void
+  undo(): void
+}
+```
+
+**7. Adapter & Facade** - Chapter 7
+- **Principle**: Interface Segregation, simplify interface
+- **Problem**: Turkey acts as Duck, Home theater system
+- **Use case**: Legacy integration, API wrappers
+```typescript
+class Adapter implements Target {
+  constructor(private adaptee: Adaptee) {}
+}
+class Facade {
+  simplifiedMethod() { /* coordinate subsystems */ }
+}
+```
+
+**8. Template Method** - Chapter 8
+- **Principle**: Hollywood Principle "Don't call us, we'll call you"
+- **Problem**: Coffee and Tea preparation
+- **Use case**: Frameworks, algorithm skeletons
+```typescript
+abstract class AbstractClass {
+  templateMethod() {
+    this.step1()
+    this.step2() // subclass implements
+  }
+}
+```
+
+**9. Iterator & Composite** - Chapter 9
+- **Principle**: Single Responsibility, uniform treatment
+- **Problem**: Diner menu vs Pancake house menu, Tree structures
+- **Use case**: Collections, file systems, UI components
+```typescript
+interface Iterator<T> {
+  hasNext(): boolean
+  next(): T
+}
+class Composite extends Component {
+  children: Component[] = []
+}
+```
+
+**10. State Pattern** - Chapter 10
+- **Principle**: Encapsulate state-based behavior
+- **Problem**: Gumball machine với nhiều states
+- **Use case**: Document workflows, TCP connections
+```typescript
+interface State {
+  handle(context: Context): void
+}
+class Context {
+  setState(state: State) { this.state = state }
+}
+```
+
+**11. Proxy Pattern** - Chapter 11
+- **Principle**: Control access to object
+- **Problem**: Gumball monitor (Virtual/Protection/Remote proxy)
+- **Use case**: Lazy loading, access control, RPC
+```typescript
+class Proxy implements Subject {
+  private realSubject: RealSubject
+  request() { 
+    this.realSubject.request() 
+  }
+}
+```
+
+---
+
+#### **Phase 3: Advanced Patterns** 🚀
+
+**12. Compound Patterns** - Chapter 12
+- **MVC Pattern**: Kết hợp Observer + Strategy + Composite
+- **Problem**: DJ application
+- **Learning**: Cách combine nhiều patterns
+
+**13. Other Patterns** - Chapter 13
+- **Bridge**: Separate abstraction from implementation
+- **Builder**: Construct complex objects step by step
+- **Chain of Responsibility**: Pass request along chain
+- **Flyweight**: Share objects to save memory
+- **Interpreter**: Define grammar representation
+- **Mediator**: Centralize communication
+- **Memento**: Save and restore state
+- **Prototype**: Clone objects
+- **Visitor**: Add operations without modifying classes
+
+---
+
+### **Pattern Groups theo Head First**
+
+#### **1. Patterns về Behavior/Algorithm**
+**Problem**: Nhiều cách xử lý khác nhau cho cùng task
+- ✅ **Strategy**: Encapsulate algorithms
+- ✅ **Template Method**: Define algorithm skeleton
+- ✅ **State**: Behavior changes with state
+- ✅ **Command**: Encapsulate requests
+
+**Khi nào dùng**: Khi có if/else dài dựa trên type hoặc state
+
+---
+
+#### **2. Patterns về Object Creation**
+**Problem**: Cần flexibility trong cách tạo objects
+- ✅ **Factory Method**: Subclass decides which class to instantiate
+- ✅ **Abstract Factory**: Families of related objects
+- ✅ **Singleton**: Only one instance
+- ✅ **Builder**: Complex construction
+- ✅ **Prototype**: Clone objects
+
+**Khi nào dùng**: Khi new object trực tiếp làm code rigid
+
+---
+
+#### **3. Patterns về Decoupling Objects**
+**Problem**: Objects phụ thuộc lẫn nhau quá nhiều
+- ✅ **Observer**: One-to-many notification
+- ✅ **Mediator**: Centralized communication
+- ✅ **Command**: Decouple sender and receiver
+- ✅ **Chain of Responsibility**: Decouple sender and handler
+
+**Khi nào dùng**: Khi thay đổi 1 object làm hỏng nhiều objects khác
+
+---
+
+#### **4. Patterns về Wrapping/Simplifying**
+**Problem**: Interface phức tạp hoặc không compatible
+- ✅ **Decorator**: Add responsibilities dynamically
+- ✅ **Facade**: Simplify complex subsystem
+- ✅ **Adapter**: Make incompatible interfaces work together
+- ✅ **Proxy**: Control access to object
+
+**Khi nào dùng**: Cần thay đổi/đơn giản hóa interface
+
+---
+
+#### **5. Patterns về Structure Management**
+**Problem**: Quản lý cấu trúc phức tạp
+- ✅ **Composite**: Tree structures
+- ✅ **Iterator**: Traverse collections
+- ✅ **Flyweight**: Share data efficiently
+
+**Khi nào dùng**: Có cấu trúc cây hoặc nhiều objects tương tự
+
+---
+
+### **Head First Learning Tips**
+
+**1. Learn in order**: Foundation → Intermediate → Advanced  
+**2. Understand principles first**: Principles > Patterns  
+**3. Code the examples**: Duck, Weather, Coffee, Pizza...  
+**4. Think in patterns**: Recognize problems patterns solve  
+**5. Don't overuse**: Patterns là tools, không phải mục đích  
+**6. Mix and match**: Real apps combine multiple patterns  
+
+**Famous Quote từ sách**:
+> "Knowing patterns helps you be a better communicator. You can use pattern names in conversations with other developers."
+
+---
+
 ## Creational Patterns - Tạo đối tượng
 
 ### 1. Singleton
