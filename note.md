@@ -902,3 +902,313 @@ class NonTerminalExpression implements Expression {
 **Traverse/parse**: Iterator, Interpreter, Visitor  
 **Undo/restore**: Command, Memento  
 **Template/skeleton**: Template Method, Builder
+
+---
+
+## Design Patterns vs SOLID Principles
+
+### S - Single Responsibility Principle (SRP)
+**Mỗi class chỉ có 1 lý do để thay đổi**
+
+**Patterns áp dụng SRP**:
+- ✅ **Strategy**: Tách algorithms thành các class riêng
+- ✅ **Command**: Tách request logic thành command objects
+- ✅ **Decorator**: Mỗi decorator chỉ lo 1 responsibility
+- ✅ **Iterator**: Tách traversal logic khỏi collection
+- ✅ **Visitor**: Tách operations khỏi element structure
+- ✅ **State**: Mỗi state class chỉ lo behavior của state đó
+- ✅ **Chain of Responsibility**: Mỗi handler lo 1 loại request
+- ✅ **Adapter**: Chỉ lo convert interface
+
+**Ví dụ**:
+```typescript
+// Vi phạm SRP: Class lo nhiều việc
+class User {
+  validateEmail() {}
+  saveToDatabase() {}
+  sendWelcomeEmail() {}
+}
+
+// Đúng SRP: Tách thành 3 class với Strategy/Command
+class EmailValidator { validate() {} }
+class UserRepository { save() {} }
+class EmailService { send() {} }
+```
+
+---
+
+### O - Open/Closed Principle (OCP)
+**Open for extension, closed for modification**
+
+**Patterns áp dụng OCP**:
+- ✅ **Strategy**: Thêm strategy mới không modify context
+- ✅ **Decorator**: Thêm behavior mới mà không đổi component gốc
+- ✅ **Factory Method**: Thêm product type mới không đổi factory interface
+- ✅ **Template Method**: Extend bằng subclass, không modify base
+- ✅ **State**: Thêm state mới không đổi context
+- ✅ **Observer**: Thêm observer mới không modify subject
+- ✅ **Chain of Responsibility**: Thêm handler mới vào chain
+- ✅ **Composite**: Thêm component type mới không đổi client code
+
+**Ví dụ**:
+```typescript
+// Vi phạm OCP: Phải modify để thêm tính năng mới
+class PaymentProcessor {
+  process(type: string) {
+    if (type === 'credit') { /* ... */ }
+    else if (type === 'paypal') { /* ... */ }
+    // Thêm mới phải modify if/else này
+  }
+}
+
+// Đúng OCP: Dùng Strategy, thêm mới không modify
+interface PaymentStrategy {
+  pay(): void
+}
+class CreditCardPayment implements PaymentStrategy {}
+class PaypalPayment implements PaymentStrategy {}
+// Thêm mới: class BitcoinPayment implements PaymentStrategy {}
+```
+
+---
+
+### L - Liskov Substitution Principle (LSP)
+**Subclass phải thay thế được superclass mà không làm hỏng chương trình**
+
+**Patterns áp dụng LSP**:
+- ✅ **Strategy**: Tất cả strategies implement cùng interface, hoán đổi được
+- ✅ **Decorator**: Decorators và components cùng interface
+- ✅ **Composite**: Leaf và Composite đều implement Component
+- ✅ **Template Method**: Subclasses override methods nhưng vẫn đúng contract
+- ✅ **State**: Tất cả states implement cùng interface
+- ✅ **Factory Method**: Tất cả products implement cùng interface
+- ✅ **Abstract Factory**: Families of products đều substitutable
+
+**Ví dụ**:
+```typescript
+// Vi phạm LSP: Square thay đổi behavior của Rectangle
+class Rectangle {
+  setWidth(w) { this.width = w }
+  setHeight(h) { this.height = h }
+}
+class Square extends Rectangle {
+  setWidth(w) { this.width = this.height = w } // Khác behavior!
+}
+
+// Đúng LSP: Dùng Strategy hoặc interface riêng
+interface Shape {
+  area(): number
+}
+class Rectangle implements Shape { area() { return w * h } }
+class Square implements Shape { area() { return s * s } }
+```
+
+---
+
+### I - Interface Segregation Principle (ISP)
+**Không ép client phụ thuộc vào interface không dùng**
+
+**Patterns áp dụng ISP**:
+- ✅ **Adapter**: Chỉ expose interface client cần
+- ✅ **Facade**: Cung cấp simplified interface
+- ✅ **Proxy**: Chỉ expose methods cần thiết
+- ✅ **Bridge**: Tách interface thành abstraction và implementation
+- ✅ **Decorator**: Compose behaviors cụ thể thay vì fat interface
+- ✅ **Strategy**: Mỗi strategy chỉ lo 1 algorithm, không fat interface
+
+**Ví dụ**:
+```typescript
+// Vi phạm ISP: Fat interface
+interface Worker {
+  work(): void
+  eat(): void
+  sleep(): void
+}
+class Robot implements Worker {
+  work() {}
+  eat() {} // Robot không ăn!
+  sleep() {} // Robot không ngủ!
+}
+
+// Đúng ISP: Tách interface nhỏ, dùng Adapter/Facade
+interface Workable { work(): void }
+interface Eatable { eat(): void }
+class Human implements Workable, Eatable {}
+class Robot implements Workable {}
+```
+
+---
+
+### D - Dependency Inversion Principle (DIP)
+**Depend on abstractions, not concretions**
+
+**Patterns áp dụng DIP**:
+- ✅ **Strategy**: Context depend on Strategy interface, không depend concrete
+- ✅ **Factory Method**: Client depend on Product interface
+- ✅ **Abstract Factory**: Client depend on Factory interface
+- ✅ **Bridge**: Abstraction depend on Implementation interface
+- ✅ **Adapter**: Client depend on Target interface
+- ✅ **Observer**: Subject depend on Observer interface
+- ✅ **Command**: Invoker depend on Command interface
+- ✅ **Template Method**: Base class define abstraction, subclass inject details
+- ✅ **Dependency Injection**: Core principle của nhiều patterns
+
+**Ví dụ**:
+```typescript
+// Vi phạm DIP: Depend on concrete class
+class UserService {
+  private db = new MySQLDatabase() // Depend concrete!
+}
+
+// Đúng DIP: Depend on interface, inject dependency
+interface Database {
+  save(data: any): void
+}
+class UserService {
+  constructor(private db: Database) {} // Depend abstraction!
+}
+// Inject: new UserService(new MySQLDatabase())
+// Hoặc: new UserService(new MongoDatabase())
+```
+
+---
+
+## Design Patterns vs OOP Concepts
+
+### 1. Encapsulation (Đóng gói)
+**Ẩn implementation details, chỉ expose interface**
+
+**Patterns tăng cường Encapsulation**:
+- ✅ **Singleton**: Private constructor, encapsulate instance creation
+- ✅ **Factory Method**: Encapsulate object creation logic
+- ✅ **Proxy**: Encapsulate access control
+- ✅ **Facade**: Encapsulate subsystem complexity
+- ✅ **Memento**: Encapsulate internal state
+- ✅ **Iterator**: Encapsulate traversal mechanism
+- ✅ **Template Method**: Encapsulate algorithm structure
+
+---
+
+### 2. Inheritance (Kế thừa)
+**Subclass kế thừa properties/methods từ superclass**
+
+**Patterns dùng Inheritance**:
+- ✅ **Template Method**: Subclass override abstract methods
+- ✅ **Factory Method**: Subclass override factory method
+- ✅ **Decorator**: Decorator extends component behavior (prefer composition!)
+- ✅ **Chain of Responsibility**: Handler hierarchy
+
+**Lưu ý**: Nhiều patterns **favor Composition over Inheritance** (Strategy, Decorator, Bridge) để tăng flexibility.
+
+---
+
+### 3. Polymorphism (Đa hình)
+**Cùng interface, nhiều implementations khác nhau**
+
+**Patterns tận dụng Polymorphism**:
+- ✅ **Strategy**: Swap strategies at runtime
+- ✅ **State**: Swap states at runtime
+- ✅ **Factory Method**: Return different product types
+- ✅ **Abstract Factory**: Return different product families
+- ✅ **Decorator**: Stack decorators polymorphically
+- ✅ **Composite**: Treat leaf and composite uniformly
+- ✅ **Visitor**: Double dispatch (visitor + element)
+- ✅ **Command**: Execute different commands uniformly
+- ✅ **Observer**: Notify different observers uniformly
+
+---
+
+### 4. Abstraction (Trừu tượng hóa)
+**Ẩn complexity, chỉ hiển thị essential features**
+
+**Patterns dùng Abstraction**:
+- ✅ **Bridge**: Separate abstraction from implementation
+- ✅ **Facade**: Provide high-level interface
+- ✅ **Proxy**: Abstract access to real object
+- ✅ **Adapter**: Abstract incompatible interface
+- ✅ **Template Method**: Abstract algorithm structure
+- ✅ **Factory Method**: Abstract object creation
+
+---
+
+### 5. Composition (Kết hợp)
+**"Has-a" relationship: Object chứa objects khác**
+
+**Patterns ưu tiên Composition**:
+- ✅ **Strategy**: Context has-a Strategy
+- ✅ **Decorator**: Decorator has-a Component
+- ✅ **Composite**: Composite has-a list of Components
+- ✅ **Bridge**: Abstraction has-a Implementation
+- ✅ **Observer**: Subject has-a list of Observers
+- ✅ **Command**: Invoker has-a Command, Command has-a Receiver
+- ✅ **Flyweight**: Object has-a shared Flyweight
+
+**Composition vs Inheritance**:
+```typescript
+// Inheritance (rigid): Class hierarchy
+class Bird extends Animal {}
+class FlyingBird extends Bird {} // Penguin sao?
+
+// Composition (flexible): Strategy pattern
+interface FlyBehavior { fly(): void }
+class Bird {
+  constructor(private flyBehavior: FlyBehavior) {}
+}
+class CanFly implements FlyBehavior {}
+class CannotFly implements FlyBehavior {}
+```
+
+---
+
+## Tổng kết: SOLID + OOP + Patterns
+
+| SOLID Principle | OOP Concept | Key Patterns |
+|----------------|-------------|--------------|
+| **SRP** | Encapsulation | Strategy, Command, Iterator, Visitor |
+| **OCP** | Polymorphism, Abstraction | Strategy, Decorator, Factory, Observer |
+| **LSP** | Inheritance, Polymorphism | Strategy, Composite, Template Method |
+| **ISP** | Abstraction | Adapter, Facade, Bridge |
+| **DIP** | Abstraction, Composition | Strategy, Factory, Observer, Command |
+
+**Quan điểm thiết kế**:
+- **Favor Composition over Inheritance**: Strategy, Decorator, Bridge, Composite
+- **Program to Interface, not Implementation**: Hầu hết các patterns
+- **Encapsulate what varies**: Strategy, State, Template Method
+- **Depend on Abstractions**: Factory, Strategy, Observer, Command
+
+---
+
+## Khi nào dùng pattern nào?
+
+### Code smell → Pattern solution
+
+| Problem (Code Smell) | SOLID vi phạm | Pattern giải quyết |
+|---------------------|---------------|-------------------|
+| **If/else dài theo type** | OCP, SRP | Strategy, State, Command |
+| **If/else dài theo feature** | OCP | Decorator, Chain of Responsibility |
+| **God class (làm quá nhiều việc)** | SRP | Facade, Mediator, Command |
+| **Tight coupling** | DIP | Strategy, Observer, Mediator |
+| **Duplicate code** | DRY | Template Method, Strategy |
+| **Subclass explosion** | OCP | Bridge, Decorator, Strategy |
+| **Complex object creation** | SRP | Factory, Builder, Prototype |
+| **Fat interface** | ISP | Adapter, Facade |
+| **Hardcoded dependencies** | DIP | Factory, Dependency Injection |
+| **Global state** | Encapsulation | Singleton (cẩn thận!) |
+| **Manual notification** | OCP | Observer |
+| **Complex subsystem** | ISP, SRP | Facade |
+
+---
+
+## Quick Reference Card
+
+**Tạo object tốt hơn** → Factory Method, Abstract Factory, Builder  
+**Tránh if/else** → Strategy, State, Chain of Responsibility  
+**Thêm tính năng không sửa code cũ (OCP)** → Decorator, Strategy, Observer  
+**Giảm coupling (DIP)** → Strategy, Observer, Mediator, Command  
+**Đơn giản hóa interface (ISP)** → Facade, Adapter  
+**Tái sử dụng code** → Template Method, Prototype  
+**Composition over Inheritance** → Strategy, Decorator, Bridge  
+**Undo/Redo** → Command, Memento  
+**Event-driven** → Observer  
+**Lazy loading** → Proxy  
+**Save memory** → Flyweight, Singleton
